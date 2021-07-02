@@ -12,9 +12,11 @@ import threading
 import time
 import pathlib
 import rospkg
-import roslibpy
 from .event import Event
-from .helper import bcolors
+#from .helper import transform
+from ros.rosbridge import ROSBridge
+from ros.tf_broadcaster import TFBroadcaster
+
 
 class BulletWorld:
     """
@@ -41,6 +43,7 @@ class BulletWorld:
         self.detachment_event = Event()
         self.attachment_event = Event()
         self.manipulation_event = Event()
+        self.type = type
         self._gui_thread = Gui(self, type)
         self._gui_thread.start()
         time.sleep(1) # 0.1
@@ -83,8 +86,11 @@ class BulletWorld:
         BulletWorld.robot = robot
 
     def simulate(self, seconds):
-        for i in range(0, int(seconds * 240)):
+        for i in range(0, int(seconds * 240)):  # PyBullet runs at 240 Hz
             p.stepSimulation(self.client_id)
+            if self.type == "GUI":
+                time.sleep(0.0042)
+
 
     def exit(self):
         BulletWorld.current_bullet_world = self.last_bullet_world
