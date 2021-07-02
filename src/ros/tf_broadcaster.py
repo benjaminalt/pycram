@@ -62,6 +62,9 @@ class TFBroadcaster(ROSTopicPublisher):
         self.static_tf_stampeds = []
         self.init_transforms_from_urdf()
 
+    def __del__(self):
+        self.ros_client.terminate()
+
     @staticmethod
     def make_tf_stamped(source_frame: str, target_frame: str, trans: np.ndarray, quat_xyzw: np.ndarray) -> roslibpy.Message:
         """
