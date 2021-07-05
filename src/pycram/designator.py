@@ -66,7 +66,7 @@ class Designator(ABC):
     make_dictionary -- return the given parameters as dictionary.
     """
 
-    """List of all designator resolvers. Designator resolvers are functions which take a designator as 
+    """List of all designator resolvers. Designator resolvers are functions which take a designator as
     argument and return a list of solutions. A solution can also be a generator. """
     resolvers = {}
 
