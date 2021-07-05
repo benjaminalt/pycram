@@ -1,7 +1,8 @@
+import logging
+
 from pycram.motion_designator import *
 from pycram.bullet_world import BulletWorld
 from pycram.robot_description import InitializedRobotDescription as robot_description
-import rospy
 
 """
 The grounding functions for the Motion designator descriptions in pycram/motion_designator.py
@@ -47,7 +48,7 @@ def ground_move_tcp(self):
 
 def ground_looking(self):
     if self.target and self.object:
-        rospy.logwarn(f"[Looking Designator Resolution] Target and Object parameter provided. Only Object will be used.")
+        logging.warning(f"[Looking Designator Resolution] Target and Object parameter provided. Only Object will be used.")
         return {'cmd': self.cmd,
                 'target': BulletWorld.current_bullet_world.get_objects_by_name(self.object)[0].get_pose}
     if self.object:

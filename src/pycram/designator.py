@@ -9,7 +9,8 @@ from inspect import isgenerator, isgeneratorfunction
 from .helper import GeneratorList, bcolors
 from threading import Lock
 from time import time
-import rospy
+import logging
+
 
 class DesignatorError(Exception):
 	"""Implementation of designator errors."""
@@ -220,7 +221,7 @@ class Designator:
 		try:
 			return self._description.__dict__[key]
 		except KeyError:
-			rospy.logerr(f"The given key {key} is not in this Designator")
+			logging.error(f"The given key {key} is not in this Designator")
 			return None
 
 	def check_constraints(self, properties):
