@@ -28,7 +28,7 @@ class BulletWorld:
 
     current_bullet_world = None
     robot = None
-    node = rospy.init_node('pycram')
+    freq = 240   # default PyBullet frequency is 240 Hz
 
     def __init__(self, type="GUI"):
         """
@@ -78,11 +78,10 @@ class BulletWorld:
         BulletWorld.robot = robot
 
     def simulate(self, seconds):
-        for i in range(0, int(seconds * 240)):  # PyBullet runs at 240 Hz
+        for i in range(0, int(seconds * self.freq)):  # PyBullet runs at 240 Hz
             p.stepSimulation(self.client_id)
             if self.type == "GUI":
-                time.sleep(0.0042)
-
+                time.sleep(1/self.freq)
 
     def exit(self):
         BulletWorld.current_bullet_world = self.last_bullet_world
