@@ -9,7 +9,9 @@ from ros.rosbridge import ROSBridge
 
 class ROSTopicPublisher(ABC):
     def __init__(self):
-        self.ros_client = roslibpy.Ros(*ROSBridge.get_ros_master_host_and_port())
+        ros_host, ros_port  = ROSBridge.get_ros_master_host_and_port()
+        logging.info(f"ROSTopicPublisher: Connecting to ROS at {ros_host}:{ros_port}")
+        self.ros_client = roslibpy.Ros(ros_host, ros_port)
         self.ros_client.run()
 
         self.thread = None

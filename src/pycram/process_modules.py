@@ -5,9 +5,9 @@ from .motion_designator import *
 
 class ProcessModules():
 
-    def __init__(self, navigation_PM, pick_up_PM, place_PM, accessing_PM, park_arms_PM,
-                 looking_PM, opening_gripper_PM, closing_gripper_PM, detecting_PM, move_tcp_PM,
-                 move_joints_PM, world_state_detecting_PM):
+    def __init__(self, navigation_PM=None, pick_up_PM=None, place_PM=None, accessing_PM=None, park_arms_PM=None,
+                 looking_PM=None, opening_gripper_PM=None, closing_gripper_PM=None, detecting_PM=None, move_tcp_PM=None,
+                 move_joints_PM=None, world_state_detecting_PM=None):
         self.navigation = navigation_PM
         self.pick_up = pick_up_PM
         self.place = place_PM
