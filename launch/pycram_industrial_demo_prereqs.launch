@@ -1,0 +1,4 @@
+<launch>
+    <include file="$(find rosbridge_server)/launch/rosbridge_websocket.launch"/>
+    <include file="$(find ur_digital_twin)/launch/run_ur_joint_state_publisher.launch"/>
+</launch>
