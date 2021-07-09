@@ -1,4 +1,8 @@
 <launch>
+    <arg name="republish_forces" default="false" doc="Whether to republish forces on a socket"/>
+
     <include file="$(find rosbridge_server)/launch/rosbridge_websocket.launch"/>
-    <include file="$(find ur_digital_twin)/launch/run_ur_joint_state_publisher.launch"/>
+
+    <include file="$(find ur_digital_twin)/launch/run_ur_joint_state_publisher.launch" unless="$(arg republish_forces)"/>
+    <include file="$(find ur_digital_twin)/launch/run_ur_joint_state_publisher_and_publish_ft.launch" if="$(arg republish_forces)"/>
 </launch>
