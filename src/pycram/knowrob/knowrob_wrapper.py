@@ -20,9 +20,7 @@ from ros.rosbridge import ROSBridge
 
 class KnowRob(object):
     def __init__(self, initial_mongo_db=None, clear_roslog=True, republish_tf=False, neem_mode=False):
-        ros_host, ros_port = ROSBridge.get_ros_master_host_and_port()
-        self.ros_client = roslibpy.Ros(ros_host, ros_port)
-        self.ros_client.run()
+        self.ros_client = ROSBridge().ros_client
 
         if clear_roslog or initial_mongo_db is not None:
             # if '/rosprolog/query' in rosservice.get_service_list():
@@ -51,9 +49,6 @@ class KnowRob(object):
             # self.republish_tf()
             self.new_republish_tf()
         self.order_dict = None
-
-    def __del__(self):
-        self.ros_client.terminate()
 
     def once(self, q):
         r = self.all_solutions(q)

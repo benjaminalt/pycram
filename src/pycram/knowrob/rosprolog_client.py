@@ -107,16 +107,10 @@ class Prolog(object):
         :param timeout: Amount of time in seconds spend waiting for rosprolog to become available.
         :type timeout: int
         """
-        ros_host, ros_port = ROSBridge.get_ros_master_host_and_port()
-        self.ros_client = roslibpy.Ros(ros_host, ros_port)
-        self.ros_client.run()
-
+        self.ros_client = ROSBridge().ros_client
         self._simple_query_srv = roslibpy.Service(self.ros_client, f'{name_space}/query', "json_prolog_msgs/srv/PrologQuery")
         self._next_solution_srv = roslibpy.Service(self.ros_client, f'{name_space}/next_solution', "json_prolog_msgs/srv/PrologNextSolution")
         self._finish_query_srv = roslibpy.Service(self.ros_client, f'{name_space}/finish', "json_prolog_msgs/srv/PrologFinish")
-
-    def __del__(self):
-        self.ros_client.terminate()
 
     def query(self, query_str):
         """
