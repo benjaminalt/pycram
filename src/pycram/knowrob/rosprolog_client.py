@@ -6,7 +6,6 @@ import json
 from enum import Enum
 
 import roslibpy
-from json_prolog_msgs import srv
 
 from ros.rosbridge import ROSBridge
 
@@ -64,14 +63,14 @@ class PrologQuery(object):
         try:
             while not self._finished:
                 next_solution = self._next_solution_srv.call(roslibpy.ServiceRequest({"id": self.get_id()}))
-                if next_solution["status"] == PrologNextSolutionResponse.OK:
+                if next_solution["status"] == PrologNextSolutionResponse.OK.value:  # Have to compare to .value here because roslibpy msg does not have types
                     yield self._json_to_dict(next_solution["solution"])
-                elif next_solution["status"] == srv.PrologNextSolutionResponse.WRONG_ID:
+                elif next_solution["status"] == PrologNextSolutionResponse.WRONG_ID.value:
                     raise PrologException(
                         f'Query id {self.get_id()} invalid. Maybe another process terminated our query?')
-                elif next_solution["status"] == srv.PrologNextSolutionResponse.QUERY_FAILED:
+                elif next_solution["status"] == PrologNextSolutionResponse.QUERY_FAILED.value:
                     raise PrologException(f'Prolog query failed: {next_solution["solution"]}')
-                elif next_solution["status"] == srv.PrologNextSolutionResponse.NO_SOLUTION:
+                elif next_solution["status"] == PrologNextSolutionResponse.NO_SOLUTION.value:
                     break
                 else:
                     raise PrologException(f'Unknown query status {next_solution["solution"]}')
