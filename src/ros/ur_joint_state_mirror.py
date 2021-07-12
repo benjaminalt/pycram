@@ -9,13 +9,8 @@ from ros.rosbridge import ROSBridge
 class URJointStateMirror(object):
     def __init__(self, world, joint_state_topic="/ur_digital_twin/joint_state"):
         self.world = world
-        self.ros_client = roslibpy.Ros(*ROSBridge.get_ros_master_host_and_port())
-        self.ros_client.run()
-
+        self.ros_client = ROSBridge().ros_client
         self.joint_state_sub = roslibpy.Topic(self.ros_client, joint_state_topic, "sensor_msgs/JointState")
-
-    def __del__(self):
-        self.ros_client.terminate()
 
     def control_simulated_ur(self, joint_state: roslibpy.Message):
         logging.debug(f"URJointStateMirror::control_simulated_ur: {joint_state}")
