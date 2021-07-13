@@ -1,8 +1,20 @@
 <launch>
     <arg name="republish_forces" default="false" doc="Whether to republish forces on a socket"/>
 
+    <!-- Setup rosbridge -->
     <include file="$(find rosbridge_server)/launch/rosbridge_websocket.launch"/>
 
+    <!-- Configure KnowRob settings -->
+    <arg name="knowrob_settings" default="$(find knowrob)/settings/knowrob_industrial.pl" />
+    <env name="KNOWROB_SETTINGS" value="$(arg knowrob_settings)" />
+
+    <!-- Launch KnowRob -->
+    <include file="$(find rosprolog)/launch/rosprolog.launch">
+        <arg name="initial_package" default="knowrob" />
+        <arg name="initial_goal" default="true" />
+    </include>
+
+    <!-- Start UR digital twin -->
     <include file="$(find ur_digital_twin)/launch/run_ur_joint_state_publisher.launch" unless="$(arg republish_forces)"/>
     <include file="$(find ur_digital_twin)/launch/run_ur_joint_state_publisher_and_publish_ft.launch" if="$(arg republish_forces)"/>
 </launch>
