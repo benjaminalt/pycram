@@ -7,7 +7,6 @@ import logging
 import os
 
 from multiprocessing import Lock
-from os.path import expanduser
 
 import roslibpy
 
@@ -19,32 +18,23 @@ from ros.rosbridge import ROSBridge
 
 
 class KnowRob(object):
-    def __init__(self, initial_mongo_db=None, clear_roslog=True, republish_tf=False, neem_mode=False):
+    def __init__(self, initial_belief_state: str = None, clear_belief_state=False, republish_tf=False, neem_mode=False):
         self.ros_client = ROSBridge().ros_client
+        self.prolog = Prolog()
 
-        if clear_roslog or initial_mongo_db is not None:
-            # if '/rosprolog/query' in rosservice.get_service_list():
-            #     logging.info('kill knowrob so mongo can be initialized!')
-            # while '/rosprolog/query' in rosservice.get_service_list():
-            #     rospy.sleep(0.5)
-            if clear_roslog:
-                self.mongo_drop_database('roslog')
-        if initial_mongo_db is not None and not neem_mode:
-            self.mongo_load_database(initial_mongo_db)
-            logging.info('restored mongo, start knowrob')
+        if initial_belief_state is not None:
+            if clear_belief_state:
+                self._mongo_drop_database('roslog')
+                logging.info("Cleared belief state")
+            self.load_beliefstate(initial_belief_state)
+            logging.info('Loaded initial belief state')
         self.separators = {}
         self.perceived_frame_id_map = {}
-        logging.info('waiting for knowrob')
-        self.prolog = Prolog()
-        logging.info('knowrob showed up')
         if neem_mode:
-            self.load_neem(initial_mongo_db)
+            self.load_neem(initial_belief_state)
         self.query_lock = Lock()
-        # rospy.wait_for_message('/visualization_marker_array')
-        # self.reset_object_state_publisher = rospy.ServiceProxy('/visualization_marker_array',
-        #                                                        Trigger)
-        if (initial_mongo_db is not None or republish_tf) and not neem_mode:
-            self.republish_tf()
+        # if (initial_mongo_db is not None or republish_tf) and not neem_mode:
+        #     self.republish_tf()
         if neem_mode:
             # self.republish_tf()
             self.new_republish_tf()
@@ -59,7 +49,6 @@ class KnowRob(object):
     def all_solutions(self, q):
         logging.info(q)
         r = self.prolog.all_solutions(q)
-        logging.info('result: {}'.format(r))
         return r
 
     # def pose_to_prolog(self, pose_stamped):
@@ -97,21 +86,6 @@ class KnowRob(object):
     #     ros_pose.pose.position = Point(*query_result[1])
     #     ros_pose.pose.orientation = Quaternion(*query_result[2])
     #     return ros_pose
-
-    def delete_graph(self, name):
-        q = 'tripledb:tripledb_graph_drop(\'{}\')'.format(name)
-        return self.once(q) != []
-
-    # def get_shelf_pose(self, shelf_system_id):
-    #     return lookup_pose("map", self.get_object_frame_id(shelf_system_id))
-
-    def rename_graph(self, old_name, new_name):
-        q = 'mng_update(roslog,triples,[graph,string({})],[\'$set\',[graph,string({})]])'.format(old_name, new_name)
-        self.once(q)
-        q = 'tripledb_add_subgraph({},common)'.format(new_name)
-        self.once(q)
-        q = 'tripledb_add_subgraph(user,{})'.format(new_name)
-        self.once(q)
 
     def get_mesh(self, object_id):
         q = 'triple(\'{}\', soma:hasShape, S), ' \
@@ -206,16 +180,6 @@ class KnowRob(object):
     def remove_quotes(self, s):
         return s.replace('\'', '')
 
-    # def belief_at(self, object_id):
-    #     pose_q = 'belief_at(\'{}\', R).'.format(object_id)
-    #     believed_pose = self.once(pose_q)['R']
-    #     ros_pose = PoseStamped()
-    #     ros_pose.header.frame_id = believed_pose[0]
-    #     ros_pose.pose.position = Point(*believed_pose[2])
-    #     ros_pose.pose.orientation = Quaternion(*believed_pose[3])
-    #     return ros_pose
-
-
     def get_object_frame_id(self, object_id):
         """
         :type object_id: str
@@ -225,17 +189,6 @@ class KnowRob(object):
         q = 'holds(\'{}\', knowrob:frameName, R).'.format(object_id)
         return self.once(q)['R'].replace('\'', '')
 
-    def save_beliefstate(self, path=None):  ### beleifstate.owl might not be created. the data is stored in tripledb
-        """
-        :type path: str
-        """
-        self.stop_episode(path)
-        # pass
-        # if path is None:
-        #     path = '{}/data/beliefstate.owl'.format(RosPack().get_path('refills_second_review'))
-        # q = 'memorize(\'{}\')'.format(path)
-        # self.once(q)
-
     # Neem logging
     # helper to create an action
     def neem_create_action(self):
@@ -244,21 +197,23 @@ class KnowRob(object):
         if solutions:
             return solutions[0]['Act']
 
-    # initialize
-    def neem_init(self, robot_iri, store_iri):
-        q = 'tf_logger_enable,' \
-            'tripledb_load(\'package://knowrob_refills/owl/iai-shop.owl\'),' \
-            'tripledb_load(\'package://knowrob/owl/robots/IIWA.owl\'),' \
-            'urdf_load(\'{0}\', \'package://knowrob/urdf/iiwa.urdf\', [load_rdf]),' \
-            'tell([is_episode(Episode),' \
-            'is_setting_for(Episode,\'{0}\'),' \
-            'is_setting_for(Episode,\'{1}\')' \
-            '])'.format(robot_iri,  # 0
-                        store_iri,  # 1
-                        )
+    def neem_init(self, semantic_map_path: str = "package://knowrob_refills/owl/iai-shop.owl",
+                  robot_owl_path: str = "package://knowrob/owl/robots/IIWA.owl",
+                  robot_urdf_path: str = "package://knowrob/urdf/iiwa.urdf",
+                  robot_iri: str = "http://knowrob.org/kb/IIWA.owl#IIWA_0",
+                  map_iri: str = "http://knowrob.org/kb/iai-shop.owl#IAIShop_0"):
+        q = "tf_logger_enable," \
+            f"load_owl('{semantic_map_path}')," \
+            f"load_owl('{robot_owl_path}')," \
+            f"urdf_load('{robot_iri}', '{robot_urdf_path}', [load_rdf])," \
+            "kb_call(new_iri(Episode, dul: 'Situation'))," \
+            "kb_project(is_episode(Episode))," \
+            f"kb_project(is_setting_for(Episode,'{robot_iri}'))," \
+            f"kb_project(is_setting_for(Episode,'{map_iri}'))"
         solutions = self.all_solutions(q)
-        if solutions:
-            return solutions[0]['Episode']
+        if solutions is None or len(solutions) == 0:
+            raise RuntimeError("Failed to initialize NEEM")
+        return solutions[0]['Episode']
 
     def neem_log_event(self, act_iri, participant_iri, robot_iri, begin_act, end_act, episode_iri=None,
                        parent_act_iri=None):
@@ -354,75 +309,33 @@ class KnowRob(object):
         if solutions:
             return solutions[0]
 
-
-    # def clear_beliefstate(self, initial_beliefstate=None):
-    #     """
-    #     :rtype: bool
-    #     """
-    #     q = 'findall(Coll, (mng_collections(roslog,Coll), \+ Coll=\'system.indexes\'), L), forall(member(C, L), mng_drop(roslog,C)),' \
-    #         'tripledb_load(\'package://knowrob/owl/knowrob.owl\',[graph(tbox),namespace(knowrob)]),' \
-    #         'tripledb_init.'
-    #         # 'tell([is_episode(Episode)]). '
-    #     # 'is_action(Action), ' \
-    #     # 'has_type(Task, soma:\'PhysicalTask\'),' \
-    #     # 'executes_task(Action,Task),' \
-    #     # 'is_setting_for(Episode,Action)]),' \
-    #     # 'notify_synchronize(event(Action)),' \
-    #     # '!.'
-    #     result = self.once(q)
-    #     if initial_beliefstate is None:
-    #         initial_beliefstate = self.initial_beliefstate
-    #     if initial_beliefstate is not None:
-    #         q = 'remember({})'.format(initial_beliefstate)
-    #         result = self.once(q)
-    #         if result == []:
-    #             raise RuntimeError('failed to load {}'.format(initial_beliefstate))
-
-    # # put path of owl here
-    # # q = 'retractall(owl_parser:owl_file_loaded(\'{}/beliefstate.owl\'))'.format(initial_beliefstate)
-    # # Works only if the beliefstate.owl is loaded with namespace beliefstate
-    # q = 'tripledb:tripledb_graph_drop(' + \
-    #     'beliefstate)'.format(initial_beliefstate)
-    # result = self.once(q) != []
-    # self.reset_object_state_publisher.call(TriggerRequest())
-    # return result
-
-    # def reset_beliefstate(self, inital_beliefstate=None):
-    #     """
-    #     :rtype: bool
-    #     """
-    #     return self.load_initial_beliefstate()
-
-    def mongo_load_database(self, path=None):
+    def load_beliefstate(self, path: str = None):
+        logging.info(f"Restoring beliefstate from {path}")
         if path is None:
             self.initial_beliefstate = self.ros_client.get_param('~initial_beliefstate')
         else:
             self.initial_beliefstate = path
-        print('loading {} into mongo'.format(path))
-        # q = 'remember(\'{}\'),  tf_mng_remember(\'{}\').'.format(path, path)
+        # q = f"remember('{path}')"     # Problem: This requires KnowRob to be initialized
         # self.once(q)
-        cmd = 'mongorestore -d roslog {}'.format(path)
-        logging.info('executing: {}'.format(cmd))
-        os.system(cmd)
+        cmd = f'mongorestore -d roslog {path}'
+        if os.system(cmd) != 0:
+            raise RuntimeError("Failed to load belief state")
 
-        # q = 'remember(\'{}\')'.format(self.initial_beliefstate)
-        # result = self.once(q)
-        # if result == []:
-        #     raise RuntimeError('failed to load {}'.format(self.initial_beliefstate))
-        # return True
-        # self.clear_beliefstate(self.initial_beliefstate)
-        # if self.start_episode(self.initial_beliefstate):
-        #     print_with_prefix('loaded initial beliefstate {}'.format(self.initial_beliefstate), self.prefix)
-        #     self.reset_object_state_publisher.call(TriggerRequest())
-        #     return True
-        # else:
-        #     print_with_prefix('error loading initial beliefstate {}'.format(self.initial_beliefstate), self.prefix)
-        #     return False
+    def reset_beliefstate(self, path: str = None):
+        self._mongo_drop_database('roslog')
+        self.load_beliefstate(path)
 
-    def load_neem(self, path):
-        q = 'remember(\'{0}\'), tf_mng_remember(\'{0}\').'.format(path).replace('~', expanduser("~"))
-        bindings = self.once(q)
-        return bindings != []
+    def load_neem(self, path, reset_beliefstate=True):
+        if reset_beliefstate:
+            self.reset_beliefstate(path)
+        else:
+            self.load_beliefstate(path)
+
+    def save_neem(self, path):
+        logging.info(f"Saving NEEM under {path}")
+        # q = f'memorize("{path}")'
+        # self.once(q)
+        self._mongo_dump_database(path, "roslog")
 
     def load_owl(self, path, ns_alias=None, ns_url=None):
         """
@@ -466,37 +379,14 @@ class KnowRob(object):
     #     self.episode_id = result['E']
     # return result != []
 
-    def stop_episode(self):
-        raise NotImplementedError()
+    def _mongo_drop_database(self, name):
+        logging.info(f"Dropping database {name}")
+        if os.system('mongo {} --eval "db.dropDatabase()"'.format(name)) != 0:
+            raise RuntimeError(f"Failed to drop {name}")
 
-    def mongo_drop_database(self, name):
-        os.system('mongo {} --eval "db.dropDatabase()"'.format(name))
-
-    def save_neem(self, path):
-        q = 'memorize("{0}"), tf_mng_memorize("{0}")'.format(path)
+    def _mongo_dump_database(self, path, db="roslog"):
+        q = f'mng_dump("{db}", "{path}")'
         self.once(q)
-
-    def mongo_dump_database(self, path):
-        # q = ''
-        # q = 'get_time(CurrentTime), ' \
-        #     'atom_concat(\'{}\',\'/\',X1), ' \
-        #     'atom_concat(X1,CurrentTime,X2), ' \
-        #     'memorize(X2).'.format(path)
-        #     # 'findall(Coll, (mng_collection(roslog,Coll), \+ Coll=\'system.indexes\'), L), forall(member(C, L), mng_drop(roslog,C)).'.format(path)
-        # result = self.once(q)
-        # if result == []:
-        #     raise RuntimeError('failed to store episode')
-        # else:
-        #     logging.info('saved episode at {}'.format(path))
-        #     return True
-
-        # print(os.getcwd())
-        os.system('mongodump --db roslog --out {}'.format(path))
-        # q = 'tf_mng_memorize(\'{}\'),  memorize(\'{}\').'.format(path, path)
-        # self.once(q)
-
-        # q = 'mem_episode_stop(\'{}\').'.format(self.episode_id)
-        # return self.once(q) != []
 
     # def start_tf_logging(self):
     #     q = 'ros_logger_start([[\'tf\',[]]])'
