@@ -8,6 +8,7 @@ import pybullet as pb
 from demos.pycram_industrial_demo.rps_process_modules import RPSProcessModules
 from pycram.bullet_world import BulletWorld, Object
 from pycram.knowrob.knowrob_wrapper import KnowRob
+from pycram.pycram_industrial.neem_logging import LogNeemMoveTcp
 from pycram.robot_description import InitializedRobotDescription as robot_description
 import motion_designator_grounding
 from pycram.motion_designator import *
@@ -53,25 +54,26 @@ if __name__ == '__main__':
     ProcessModule.resolvers.append(lambda desig: RPSProcessModules(rps, world).initialized.available_process_modules(desig))
 
     rospack = RosPack()
-    knowrob = KnowRob(clear_belief_state=True, initial_belief_state=os.path.join(rospack.get_path("knowrob_industrial"),
-                                                                                 "misc", "mongo_knowrob_default", "roslog"))
-    robot_iri = "http://knowrob.org/kb/UR5Robotiq.owl#UR5Arm_0"
+    knowrob = KnowRob(clear_beliefstate=True)
+    robot_iri = "http://knowrob.org/kb/UR5Robotiq.owl#UR5Robotiq_0"
+    arm_iri = "http://knowrob.org/kb/UR5Robotiq.owl#UR5Arm_0"
     map_iri = "http://knowrob.org/kb/IAI-kitchen.owl#IAIKitchenMap_PM580j"
-    episode_iri = knowrob.neem_init(
-        semantic_map_path=os.path.join(rospack.get_path("iai_semantic_maps"), "owl", "kitchen.owl"),
-        robot_owl_path=os.path.join(rospack.get_path("knowrob_industrial"), "owl", "UR5Robotiq.owl"),
-        robot_urdf_path=os.path.join(rospack.get_path("pycram"), "resources", "ur5_robotiq.urdf"),
-        robot_iri=robot_iri,
-        map_iri=map_iri
-    )
 
     # Run program
+    top_level_action = knowrob.start_episode(env_owl=os.path.join(rospack.get_path("iai_semantic_maps"), "owl", "kitchen.owl"),
+                                             env_owl_ind_name=map_iri,
+                                             env_urdf=os.path.join(rospack.get_path('pycram'), "resources", "kitchen.urdf"),
+                                             env_urdf_prefix="http://knowrob.org/kb/IAI-kitchen.owl#",
+                                             agent_owl=os.path.join(rospack.get_path("knowrob_industrial"), "owl", "UR5Robotiq.owl"),
+                                             agent_owl_ind_name=robot_iri,
+                                             agent_urdf=os.path.join(rospack.get_path("pycram"), "resources", "ur5_robotiq.urdf"))
+
     with tf_broadcaster, jsp, urjsm, fts:
-        MotionDesignator(MoveTCPMotionDescription(target=SPAWNING_POSES["cereal"])).perform()
+        with LogNeemMoveTcp(knowrob, parent_act_iri=top_level_action, participant_iri=arm_iri, robot_iri=robot_iri):
+            MotionDesignator(MoveTCPMotionDescription(target=SPAWNING_POSES["cereal"])).perform()
 
-    knowrob.once("tf_logger_disable")
-
-    neem_dir = os.path.join(rospack.get_path("pycram"), "neems", "test_neem")
+    neem_dir = os.path.join(rospack.get_path("pycram"), "neems", "test")
     if not os.path.exists(neem_dir):
         os.makedirs(neem_dir)
-    knowrob.save_neem(neem_dir)
+
+    knowrob.stop_episode(neem_dir)
