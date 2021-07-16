@@ -7,8 +7,10 @@ import logging
 import os
 
 from multiprocessing import Lock
+from typing import Dict, List, Union
 
 import roslibpy
+from rospkg import RosPack
 
 from pycram.knowrob.rosprolog_client import Prolog, PrologException
 
@@ -18,16 +20,19 @@ from ros.rosbridge import ROSBridge
 
 
 class KnowRob(object):
-    def __init__(self, initial_belief_state: str = None, clear_belief_state=False, republish_tf=False, neem_mode=False):
+    def __init__(self, initial_belief_state: str = None, clear_beliefstate=False, republish_tf=False, neem_mode=False):
         self.ros_client = ROSBridge().ros_client
         self.prolog = Prolog()
 
+        neem_interface_path = os.path.join(RosPack().get_path("cram_cloud_logger"), "src", "neem-interface.pl")
+        self.prolog.once(f"ensure_loaded('{neem_interface_path}')")
+
+        if clear_beliefstate:
+            self.clear_beliefstate()
         if initial_belief_state is not None:
-            if clear_belief_state:
-                self._mongo_drop_database('roslog')
-                logging.info("Cleared belief state")
             self.load_beliefstate(initial_belief_state)
             logging.info('Loaded initial belief state')
+
         self.separators = {}
         self.perceived_frame_id_map = {}
         if neem_mode:
@@ -40,7 +45,7 @@ class KnowRob(object):
             self.new_republish_tf()
         self.order_dict = None
 
-    def once(self, q):
+    def once(self, q) -> Union[List, Dict]:
         r = self.all_solutions(q)
         if len(r) == 0:
             return []
@@ -190,30 +195,17 @@ class KnowRob(object):
         return self.once(q)['R'].replace('\'', '')
 
     # Neem logging
-    # helper to create an action
     def neem_create_action(self):
-        q = 'tell(is_action(Act))'
+        """
+        Assert a new action into the knowledge base and return its IRI.
+        """
+        q = "kb_call(new_iri(Action, dul:'Action'))," \
+            "kb_project(is_action(Action))"
         solutions = self.all_solutions(q)
-        if solutions:
-            return solutions[0]['Act']
-
-    def neem_init(self, semantic_map_path: str = "package://knowrob_refills/owl/iai-shop.owl",
-                  robot_owl_path: str = "package://knowrob/owl/robots/IIWA.owl",
-                  robot_urdf_path: str = "package://knowrob/urdf/iiwa.urdf",
-                  robot_iri: str = "http://knowrob.org/kb/IIWA.owl#IIWA_0",
-                  map_iri: str = "http://knowrob.org/kb/iai-shop.owl#IAIShop_0"):
-        q = "tf_logger_enable," \
-            f"load_owl('{semantic_map_path}')," \
-            f"load_owl('{robot_owl_path}')," \
-            f"urdf_load('{robot_iri}', '{robot_urdf_path}', [load_rdf])," \
-            "kb_call(new_iri(Episode, dul: 'Situation'))," \
-            "kb_project(is_episode(Episode))," \
-            f"kb_project(is_setting_for(Episode,'{robot_iri}'))," \
-            f"kb_project(is_setting_for(Episode,'{map_iri}'))"
-        solutions = self.all_solutions(q)
-        if solutions is None or len(solutions) == 0:
-            raise RuntimeError("Failed to initialize NEEM")
-        return solutions[0]['Episode']
+        if solutions and len(solutions) > 0:
+            return solutions[0]['Action']
+        else:
+            raise RuntimeError("Failed to create action")
 
     def neem_log_event(self, act_iri, participant_iri, robot_iri, begin_act, end_act, episode_iri=None,
                        parent_act_iri=None):
@@ -240,38 +232,49 @@ class KnowRob(object):
             return solutions[0]
 
     def neem_arm_motion(self, participant_iri, robot_iri, begin_act, end_act, parent_act_iri,
-                        task, role, motion):
+                        task="AssumingArmPose", role="MovedObject", motion="LimbMotion"):
         """
-        For an example of this in use, see LogNeemArmMotion in knowrob_refills knowrob_wrapper.py
+        :param participant_iri: The actor performing the action (i.e. the robot arm)
+        :param robot_iri: The robot
+        :param begin_act: Timestamp of the beginning of the action (in seconds since epoch)
+        :param end_act: Timestamp of the end of the action (in seconds since epoch)
+        :parent_act_iri: The parent action
+        :param role: The role of participant in the context of task
+        :param task: The task executed by the action
+        :param motion: The motion type classifying the action
         """
-        q = 'tell(is_action(Act)),' \
-            'notify_synchronize(event(Act)),' \
-            'tell([' \
-            'has_participant(Act,\'{0}\'),' \
-            'is_performed_by(Act,\'{1}\'),' \
-            'occurs(Act) during [{2},{3}],' \
-            'has_type(RobotRole, soma:\'AgentRole\'),'\
-            'has_role(\'{1}\', RobotRole) during Act,'\
-            'has_type(Tsk,soma:\'{5}\'),' \
-            'has_type(Role,soma:\'{6}\'),' \
-            'has_task_role(Tsk,Role),' \
-            'has_role(\'{0}\',Role) during Act,' \
-            'executes_task(Act,Tsk),' \
-            'has_type(Mot,soma:\'{7}\'),' \
-            'is_classified_by(Act,Mot),' \
-            'has_process_role(Mot,Role),' \
-            'has_subevent(\'{4}\',Act)' \
-            '])'.format(participant_iri,  # 0
-                        robot_iri,  # 1
-                        begin_act,  # 2
-                        end_act,  # 3
-                        parent_act_iri,  # 4
-                        task,  # 5
-                        role,  # 6
-                        motion)  # 7
-        solutions = self.all_solutions(q)
-        if solutions:
-            return solutions[0]
+        q = f"""kb_project([
+                    new_iri(Act, dul:'Action'),
+                    is_action(Act),
+                    has_participant(Act,'{participant_iri}'),
+                    is_performed_by(Act,'{robot_iri}'),
+                    new_iri(RobotRole, dul:'Role'),
+                    has_type(RobotRole, soma:'AgentRole'),
+                    new_iri(Tsk, dul:'Task'),
+                    has_type(Tsk,soma:'{task}'),
+                    new_iri(Role, dul:'Role'),
+                    has_type(Role,soma:'{role}'),
+                    has_task_role(Tsk,Role),
+                    executes_task(Act,Tsk),
+                    new_iri(Mot, soma:'Motion'),
+                    has_type(Mot,soma:'{motion}'),
+                    is_classified_by(Act,Mot),
+                    has_process_role(Mot,Role),
+                    holds('{parent_act_iri}',dul:hasConstituent,Act)
+                ])"""
+        res = self.once(q)
+        act_iri = res["Act"]
+        robot_role_iri = res["RobotRole"]
+        arm_role_iri = res["Role"]
+
+        # Bugfix: kb_project(...) doesn't like variables in occurs, so need to assert this afterward
+        # Bugfix: kb_project(...) doesn't like variables in during, so need to assert this afterward
+        res = self.once(f"""kb_project([
+                                occurs('{act_iri}') during [{begin_act},{end_act}],
+                                has_role('{robot_iri}', '{robot_role_iri}') during [{begin_act}, {end_act}],
+                                has_role('{participant_iri}', '{arm_role_iri}') during [{begin_act}, {end_act}]
+                            ])""")
+        return act_iri
 
     # a
     def neem_park_arm(self, robot_arm_iri, robot_iri, begin_act, end_act, parent_act_iri):
@@ -321,15 +324,14 @@ class KnowRob(object):
         if os.system(cmd) != 0:
             raise RuntimeError("Failed to load belief state")
 
-    def reset_beliefstate(self, path: str = None):
-        self._mongo_drop_database('roslog')
-        self.load_beliefstate(path)
+    def clear_beliefstate(self):
+        logging.info("Clearing beliefstate")
+        self.once("mem_clear_memory")
 
     def load_neem(self, path, reset_beliefstate=True):
         if reset_beliefstate:
-            self.reset_beliefstate(path)
-        else:
-            self.load_beliefstate(path)
+            self.clear_beliefstate()
+        self.load_beliefstate(path)
 
     def save_neem(self, path):
         logging.info(f"Saving NEEM under {path}")
@@ -354,30 +356,22 @@ class KnowRob(object):
             logging.warning(e)
             return False
 
-    def start_episode(self):
-        raise NotImplementedError()
+    def start_episode(self, env_owl: str, env_owl_ind_name: str, env_urdf: str, env_urdf_prefix: str,
+                      agent_owl: str, agent_owl_ind_name: str, agent_urdf: str):
+        """
+        Start an episode and return the prolog atom for the corresponding action.
+        """
+        q = f"mem_episode_start(Action, '{env_owl}', '{env_owl_ind_name}', '{env_urdf}', '{env_urdf_prefix}'," \
+            f"'{agent_owl}', '{agent_owl_ind_name}', '{agent_urdf}')"
+        res = self.once(q)
+        return res["Action"]
 
-    #     self.clear_beliefstate(path_to_old_episode)
-    #     q = 'tell([is_episode(Episode)]).'
-    #     result = self.once(q)
-    # if path_to_old_episode is not None:
-    #     q = 'remember({})'.format(path_to_old_episode)
-    #     result = self.once(q)
-    #     if result == []:
-    #         raise RuntimeError('failed to load {}'.format(path_to_old_episode))
-    # if result:
-    #     q = 'knowrob_memory:current_episode(E), mem_episode_stop(E)'
-    #     self.once(q)
+    def stop_episode(self, neem_path: str):
+        return self.once(f"mem_episode_stop('{neem_path}')")
 
-    # if path_to_old_episode is None:
-    #     q = 'mem_episode_start(E).'
-    #     result = self.once(q)
-    #     self.episode_id = result['E']
-    # else:
-    #     q = 'mem_episode_start(E, [import:\'{}\']).'.format(path_to_old_episode)
-    #     result = self.once(q)
-    #     self.episode_id = result['E']
-    # return result != []
+    def new_iri(self, owl_class: str):
+        res = self.once(f"kb_call(new_iri(IRI, {owl_class}))")
+        return res["IRI"]
 
     def _mongo_drop_database(self, name):
         logging.info(f"Dropping database {name}")
