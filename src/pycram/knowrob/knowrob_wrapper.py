@@ -271,8 +271,8 @@ class KnowRob(object):
         # Bugfix: kb_project(...) doesn't like variables in during, so need to assert this afterward
         res = self.once(f"""kb_project([
                                 occurs('{act_iri}') during [{begin_act},{end_act}],
-                                has_role('{robot_iri}', '{robot_role_iri}') during [{begin_act}, {end_act}],
-                                has_role('{participant_iri}', '{arm_role_iri}') during [{begin_act}, {end_act}]
+                                has_role('{robot_iri}', '{robot_role_iri}') during '{act_iri}',
+                                has_role('{participant_iri}', '{arm_role_iri}') during '{act_iri}'
                             ])""")
         return act_iri
 
