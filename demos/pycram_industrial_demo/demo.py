@@ -22,8 +22,9 @@ PYCRAM_DIR = os.path.join(SCRIPT_DIR, os.pardir, os.pardir)
 RESOURCE_DIR = os.path.join(PYCRAM_DIR, "resources")
 
 SPAWNING_POSES = {
-    "robot": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
-    "cereal": [0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
+    "robot": [0.1, 0.1, 0.89, 0.0, 0.0, 0.0, 1.0],   # x,y,z,qx,qy,qz,qw
+    "motherboard": [0.6, 0.4, 0.89, 0.0, 0.0, 0.0, 1.0],
+    "ram_stick": [0.6, 0.6, 0.9, 0.0, 0.0, 0.0, 1.0]
 }
 
 
@@ -33,18 +34,28 @@ if __name__ == '__main__':
 
     world = BulletWorld()
     pb.resetDebugVisualizerCamera(cameraDistance=5, cameraYaw=30, cameraPitch=-70, cameraTargetPosition=[0,0,0])
-
     world.set_gravity([0, 0, -9.8])
-    plane = Object("floor", "environment", os.path.join(RESOURCE_DIR, "plane.urdf"), world=world)
 
-    robot = Object("ur", "robot", os.path.join(RESOURCE_DIR, "ur5_robotiq.urdf"),
+    # Load environment, robot and objects
+    rospack = RosPack()
+    lab_urdf_path = os.path.join(rospack.get_path("knowrob_industrial"), "urdf", "maps",
+                                 "motherboard_experiment_lab.urdf")
+    robot_urdf_path = os.path.join(rospack.get_path("knowrob_industrial"), "urdf", "robots", "ur5_robotiq.urdf")
+    motherboard_urdf_path = os.path.join(rospack.get_path("knowrob_industrial"), "urdf", "objects", "motherboard.urdf")
+    ram_urdf_path = os.path.join(rospack.get_path("knowrob_industrial"), "urdf", "objects",
+                                 "ddr3-4Gbyte-ram-module-kingston.urdf")
+
+    plane = Object("floor", "environment", os.path.join(RESOURCE_DIR, "plane.urdf"), world=world)
+    lab = Object("lab", "environment", lab_urdf_path)
+    robot = Object("ur", "robot", robot_urdf_path,
                    position=SPAWNING_POSES["robot"][:3], orientation=SPAWNING_POSES["robot"][3:])
-    kitchen = Object("kitchen", "environment", os.path.join(RESOURCE_DIR, "kitchen.urdf"))
-    cereal = Object("cereal", "cereal", os.path.join(RESOURCE_DIR, "breakfast_cereal.stl"),
-                    position=SPAWNING_POSES["cereal"][:3], orientation=SPAWNING_POSES["cereal"][3:])
+    motherboard = Object("motherboard", "object", motherboard_urdf_path,
+                         position=SPAWNING_POSES["motherboard"][:3], orientation=SPAWNING_POSES["motherboard"][3:])
+    ram_stick = Object("ram_stick", "object", ram_urdf_path,
+                       position=SPAWNING_POSES["ram_stick"][:3], orientation=SPAWNING_POSES["ram_stick"][3:])
     BulletWorld.robot = robot
 
-    tf_broadcaster = TFBroadcaster(world, "map", "odom", "projection", "iai_kitchen", interval=1.0)
+    tf_broadcaster = TFBroadcaster(world, "map", "odom", "projection", interval=1.0)
     jsp = JointStatePublisher(world)
     urjsm = URJointStateMirror(world)
     fts = ForceTorqueSensor(world, "ee_fixed_joint")
@@ -53,24 +64,23 @@ if __name__ == '__main__':
     rps = RPSInterface("nb067")
     ProcessModule.resolvers.append(lambda desig: RPSProcessModules(rps, world).initialized.available_process_modules(desig))
 
-    rospack = RosPack()
     knowrob = KnowRob(clear_beliefstate=True)
     robot_iri = "http://knowrob.org/kb/UR5Robotiq.owl#UR5Robotiq_0"
     arm_iri = "http://knowrob.org/kb/UR5Robotiq.owl#UR5Arm_0"
-    map_iri = "http://knowrob.org/kb/IAI-kitchen.owl#IAIKitchenMap_PM580j"
+    map_iri = "http://knowrob.org/kb/motherboard_experiment_lab.owl#motherboard_experiment_lab"
 
     # Run program
-    top_level_action = knowrob.start_episode(env_owl=os.path.join(rospack.get_path("iai_semantic_maps"), "owl", "kitchen.owl"),
+    top_level_action = knowrob.start_episode(env_owl=os.path.join(rospack.get_path("knowrob_industrial"), "owl", "motherboard_experiment_lab.owl"),
                                              env_owl_ind_name=map_iri,
-                                             env_urdf=os.path.join(rospack.get_path('pycram'), "resources", "kitchen.urdf"),
-                                             env_urdf_prefix="http://knowrob.org/kb/IAI-kitchen.owl#",
+                                             env_urdf=lab_urdf_path,
+                                             env_urdf_prefix="http://knowrob.org/kb/motherboard_experiment_lab.owl#",
                                              agent_owl=os.path.join(rospack.get_path("knowrob_industrial"), "owl", "UR5Robotiq.owl"),
                                              agent_owl_ind_name=robot_iri,
-                                             agent_urdf=os.path.join(rospack.get_path("pycram"), "resources", "ur5_robotiq.urdf"))
+                                             agent_urdf=robot_urdf_path)
 
     with tf_broadcaster, jsp, urjsm, fts:
         with LogNeemMoveTcp(knowrob, parent_act_iri=top_level_action, participant_iri=arm_iri, robot_iri=robot_iri):
-            MotionDesignator(MoveTCPMotionDescription(target=SPAWNING_POSES["cereal"])).perform()
+            MotionDesignator(MoveTCPMotionDescription(target=SPAWNING_POSES["ram_stick"])).perform()
 
     neem_dir = os.path.join(rospack.get_path("pycram"), "neems", "test")
     if not os.path.exists(neem_dir):

@@ -17,7 +17,8 @@ class RPSSceneMirror(object):
         rospack = RosPack()
         self.remote_package_locations = {
             rospack.get_path("iai_maps"): "C:/Users/alt/devel/catkin_ws/src/iai_maps/iai_maps",
-            rospack.get_path("iai_kitchen"): "C:/Users/alt/devel/catkin_ws/src/iai_maps/iai_kitchen"
+            rospack.get_path("iai_kitchen"): "C:/Users/alt/devel/catkin_ws/src/iai_maps/iai_kitchen",
+            rospack.get_path("knowrob_industrial"): "C:/Users/alt/devel/ilias/knowrob_industrial"
         }
         self.link_idx_to_rps_object_id = {}  # Mapping body ID --> link ID --> RPS ID
         self.rps = rps
