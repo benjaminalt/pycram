@@ -39,7 +39,7 @@ class Pose(object):
 
 
 class TFBroadcaster(ROSTopicPublisher):
-    def __init__(self, bullet_world, map_frame, odom_frame, projection_namespace, kitchen_namespace, interval=0.1):
+    def __init__(self, bullet_world, map_frame, odom_frame, projection_namespace, interval=0.1):
         super().__init__()
         self.world = bullet_world
 
@@ -54,7 +54,6 @@ class TFBroadcaster(ROSTopicPublisher):
         self.odom_frame = odom_frame
         # Namespaces
         self.projection_namespace = projection_namespace
-        self.kitchen_namespace = kitchen_namespace
 
         self.tfs = []
         self.static_tfs = []
