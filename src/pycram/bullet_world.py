@@ -176,8 +176,9 @@ class Object:
         self.name = name
         self.type = type
         self.path = path
+        self.urdf_path = None
         self.color = color
-        self.id = _load_object(name, path, position, orientation, world, color, ignoreCachedFiles)
+        self.id, self.urdf_path = _load_object(name, path, position, orientation, world, color, ignoreCachedFiles)
         self.joints = self._joint_or_link_name_to_id("joint")
         self.links = self._joint_or_link_name_to_id("link")
         self.attachments = {}
@@ -431,7 +432,7 @@ def _load_object(name, path, position, orientation, world, color, ignoreCachedFi
 
     try:
         obj = p.loadURDF(path, basePosition=position, baseOrientation=orientation, physicsClientId=world_id)
-        return obj
+        return obj, path
     except p.error as e:
         print(e)
         logging.error("The File could not be loaded. Plese note that the path has to be either a URDF, stl or obj file or the name of an URDF string on the parameter server.")
