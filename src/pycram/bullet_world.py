@@ -5,6 +5,7 @@ BulletWorld -- The Representation of the physics simulation
 Gui -- Starts a new thread to keep the gui persistent
 Object -- Representation of an object in the BulletWorld
 """
+from typing import List
 
 import pybullet as p
 import os
@@ -232,7 +233,7 @@ class Object:
             self.detach(obj)
         p.removeBody(self.id, physicsClientId=self.world.client_id)
 
-    def attach(self, object, link=None, loose=False):
+    def attach(self, obj, link: str = None, loose: bool = False):
         """
         This method attaches an other object to this object. This is done by
         saving the transformation between the given link, if there is one, and
@@ -240,20 +241,20 @@ class Object:
         which the obejct is attached, will be saved.
         Furthermore, a constraint of pybullet will be created so the attachment
         also works in the simulation.
-        :param object: The other object that should be attached
+        :param obj: The other object that should be attached
         :param link: The link of this obejct to which the other object should be
         attached.
         """
         link_id = self.get_link_id(link) if link else -1
-        link_T_object = self._calculate_transform(object, link)
-        self.attachments[object] = [link_T_object, link, loose]
-        object.attachments[self] = [p.invertTransform(link_T_object[0], link_T_object[1]), None, False]
+        link_T_object = self._calculate_transform(obj, link)
+        self.attachments[obj] = [link_T_object, link, loose]
+        obj.attachments[self] = [p.invertTransform(link_T_object[0], link_T_object[1]), None, False]
 
-        cid = p.createConstraint(self.id, link_id, object.id, -1, p.JOINT_FIXED,
-                            [0, 1, 0], link_T_object[0], [0, 0, 0], link_T_object[1], physicsClientId=self.world.client_id)
-        self.cids[object] = cid
-        object.cids[self] = cid
-        self.world.attachment_event(self, [self, object])
+        cid = p.createConstraint(self.id, link_id, obj.id, -1, p.JOINT_FIXED,
+                                 [0, 1, 0], link_T_object[0], [0, 0, 0], link_T_object[1], physicsClientId=self.world.client_id)
+        self.cids[obj] = cid
+        obj.cids[self] = cid
+        self.world.attachment_event(self, [self, obj])
 
 
     def detach(self, object):
@@ -299,7 +300,7 @@ class Object:
         p.resetBasePositionAndOrientation(self.id, position, orientation, self.world.client_id)
         self._set_attached_objects([self])
 
-    def _set_attached_objects(self, prev_object):
+    def _set_attached_objects(self, prev_object: List):
         """
         This method updates the positions of all attached objects. This is done
         by calculating the new pose in world coordinate frame and setting the
@@ -332,7 +333,7 @@ class Object:
                 p.resetBasePositionAndOrientation(obj.id, world_T_object[0], world_T_object[1])
                 obj._set_attached_objects(prev_object + [self])
 
-    def _calculate_transform(self, obj, link):
+    def _calculate_transform(self, obj, link: str):
         link_id = self.get_link_id(link) if link else -1
         world_T_link =  self.get_link_position_and_orientation(link) if link else self.get_position_and_orientation()
         link_T_world = p.invertTransform(world_T_link[0], world_T_link[1])
@@ -379,7 +380,7 @@ class Object:
                                                                           map_T_target_trans, map_T_target_rot)
         return source_T_target_trans, source_T_target_rot
 
-    def get_link_position_and_orientation(self, name):
+    def get_link_position_and_orientation(self, name: str):
         return p.getLinkState(self.id, self.links[name], physicsClientId=self.world.client_id)[4:6]
 
     def get_link_position(self, name):
@@ -395,8 +396,7 @@ class Object:
         if not low_lim <= joint_pose <= up_lim:
             logging.error(f"The joint position has to be within the limits of the joint. The joint limits for {joint_name} are {low_lim} and {up_lim}")
             logging.error(f"The given joint position was: {joint_pose}")
-            # Temporarily disabled because kdl outputs values exciting joint limits
-            #return
+            raise ValueError("Joint limits exceeded!")
         p.resetJointState(self.id, self.joints[joint_name], joint_pose, physicsClientId=self.world.client_id)
         self._set_attached_objects([self])
 
@@ -412,6 +412,7 @@ class Object:
         contact_points = self.contact_points()
         self.world.restore_state(*s)
         return contact_points
+
 
 def filter_contact_points(contact_points, exclude_ids):
     return list(filter(lambda cp: cp[2] not in exclude_ids, contact_points))
