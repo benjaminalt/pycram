@@ -1,5 +1,5 @@
-import logging
 import os
+from threading import Lock
 from urllib.parse import urlparse
 
 import roslibpy
