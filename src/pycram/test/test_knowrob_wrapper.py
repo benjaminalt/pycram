@@ -41,7 +41,7 @@ class TestKnowRobWrapper(TestCase):
         self.assertTrue(res.startswith("http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Action_"))
 
     def testStartEpisode(self):
-        act = self.knowrob.start_episode(self.kitchen_owl, self.kitchen_iri, self.kitchen_urdf,
+        act = self.knowrob.start_episode("soma:'PhysicalTask'", self.kitchen_owl, self.kitchen_iri, self.kitchen_urdf,
                                          self.kitchen_urdf_prefix, self.robot_owl, self.robot_iri, self.robot_urdf)
         self.assertIsNotNone(act)
 
