@@ -1,3 +1,4 @@
+
 import threading
 import time
 
@@ -41,7 +42,7 @@ class Pose(object):
 
 
 class TFBroadcaster(ROSTopicPublisher):
-    def __init__(self, bullet_world, map_frame, odom_frame, projection_namespace, interval=0.1):
+    def __init__(self, bullet_world, map_frame, odom_frame, projection_namespace, kitchen_namespace, interval=0.1):
         super().__init__()
         self.world = bullet_world
 
@@ -56,27 +57,24 @@ class TFBroadcaster(ROSTopicPublisher):
         self.odom_frame = odom_frame
         # Namespaces
         self.projection_namespace = projection_namespace
+        self.kitchen_namespace = kitchen_namespace
 
-        self.tfs = []
-        self.static_tfs = []
+        self.tf_stampeds = []
+        self.static_tf_stampeds = []
         self.init_transforms_from_urdf()
 
-    def __del__(self):
-        self.ros_client.terminate()
-
     @staticmethod
-    def make_tf_msg(source_frame: str, target_frame: str, trans: np.ndarray, quat_xyzw: np.ndarray) -> roslibpy.Message:
+    def make_tf_stamped(source_frame: str, target_frame: str, trans: np.ndarray, quat_xyzw: np.ndarray) -> roslibpy.Message:
         """
         http://docs.ros.org/en/melodic/api/geometry_msgs/html/msg/TransformStamped.html
         """
-        return roslibpy.Message({"transforms": [
-            {
+        return roslibpy.Message({
             "header": roslibpy.Header(0, roslibpy.Time.now(), source_frame),
             "child_frame_id": target_frame,
             "transform": {
                 "translation": dict(zip(["x", "y", "z"], trans.tolist())),
                 "rotation": dict(zip(["x", "y", "z", "w"], quat_xyzw.tolist()))
-            }}]
+            }
         })
 
     def init_transforms_from_urdf(self):
@@ -118,13 +116,13 @@ class TFBroadcaster(ROSTopicPublisher):
                     rotation = [0, 0, 0, 1]
 
                 # Wrap the joint attributes in a TFStamped and append it to static_tf_stamped if the joint was fixed
-                tf_stamped_msg = self.make_tf_msg(source_frame, target_frame, np.array(translation), np.array(rotation))
+                tf_stamped_msg = self.make_tf_stamped(source_frame, target_frame, np.array(translation), np.array(rotation))
                 if (joint.type and joint.type == 'fixed') or joint.name in robot_description.i.odom_joints:
                     self.tf_static_publisher.publish(tf_stamped_msg)
-                    self.static_tfs.append(tf_stamped_msg)
+                    self.static_tf_stampeds.append(tf_stamped_msg)
                 else:
                     self.tf_publisher.publish(tf_stamped_msg)
-                    self.tfs.append(tf_stamped_msg)
+                    self.tf_stampeds.append(tf_stamped_msg)
 
     def update(self):
         # Update static odom
@@ -156,16 +154,16 @@ class TFBroadcaster(ROSTopicPublisher):
         if robot:
             # First publish (static) joint states to tf
             # Update tf stampeds which might have changed
-            for tf_msg in self.tfs:
-                source_frame = tf_msg.data["transforms"][0]["header"].data["frame_id"]
-                target_frame = tf_msg.data["transforms"][0]["child_frame_id"]
+            for tf_stamped in self.tf_stampeds:
+                source_frame = tf_stamped.data["header"].data["frame_id"]
+                target_frame = tf_stamped.data["child_frame_id"]
                 # Push calculated transformation to the local transformer
                 p, q = robot.get_link_relative_to_other_link(source_frame.replace(self.projection_namespace + "/", ""),
                                                              target_frame.replace(self.projection_namespace + "/", ""))
-                self.tf_publisher.publish(self.make_tf_msg(source_frame, target_frame, np.array(p), np.array(q)))
+                self.tf_publisher.publish(self.make_tf_stamped(source_frame, target_frame, np.array(p), np.array(q)))
 
             # Update the static transforms
-            for static_tf_stamped in self.static_tfs:
+            for static_tf_stamped in self.static_tf_stampeds:
                 self.tf_static_publisher.publish(static_tf_stamped)
 
     def _update_robot_pose(self):
@@ -181,7 +179,7 @@ class TFBroadcaster(ROSTopicPublisher):
 
     def _publish_pose(self, frame_id: str, child_frame_id: str, pose: Pose, static=False):
         if frame_id != child_frame_id:
-            tf_stamped = self.make_tf_msg(frame_id, child_frame_id, pose.pos(), pose.ori_qxyzw())
+            tf_stamped = self.make_tf_stamped(frame_id, child_frame_id, pose.pos(), pose.ori_qxyzw())
             if static:
                 self.tf_static_publisher.publish(tf_stamped)
             else:
@@ -190,7 +188,6 @@ class TFBroadcaster(ROSTopicPublisher):
     def _publish_object_pose(self, obj_name: str, pose: Pose):
         """
         Publishes the given pose of the object of given name in reference to the map frame to tf.
-
         :type obj_name: str
         :type pose: list or Pose
         """
@@ -221,9 +218,3 @@ class TFBroadcaster(ROSTopicPublisher):
         while not self.kill_event.is_set():
             self.update()
             time.sleep(self.interval)
-
-    def __enter__(self):
-        self.start_broadcasting()
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.stop_broadcasting()
