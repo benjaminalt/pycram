@@ -3,7 +3,7 @@ import logging
 import roslibpy
 import pybullet as pb
 
-from ros.rosbridge import ROSBridge
+from ros.rosbridge import ros_client
 
 DIGITAL_TWIN_ENABLED = True
 
@@ -11,8 +11,7 @@ DIGITAL_TWIN_ENABLED = True
 class URJointStateMirror(object):
     def __init__(self, world, joint_state_topic="/ur_digital_twin/joint_state"):
         self.world = world
-        self.ros_client = ROSBridge().ros_client
-        self.joint_state_sub = roslibpy.Topic(self.ros_client, joint_state_topic, "sensor_msgs/JointState")
+        self.joint_state_sub = roslibpy.Topic(ros_client, joint_state_topic, "sensor_msgs/JointState")
 
     def control_simulated_ur(self, joint_state: roslibpy.Message):
         if DIGITAL_TWIN_ENABLED:
