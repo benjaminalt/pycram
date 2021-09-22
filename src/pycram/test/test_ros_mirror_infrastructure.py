@@ -33,7 +33,7 @@ if __name__ == '__main__':
                     position=SPAWNING_POSES["cereal"][:3], orientation=SPAWNING_POSES["cereal"][3:])
     BulletWorld.robot = robot
 
-    tf_broadcaster = TFBroadcaster(world, "map", "odom", "projection", "iai_kitchen", interval=1.0)
+    tf_broadcaster = TFBroadcaster(world, "map", "odom", "projection", interval=1.0)
     jsp = JointStatePublisher(world)
     urjsm = URJointStateMirror(world)
     fts = ForceTorqueSensor(world, "ee_fixed_joint")
