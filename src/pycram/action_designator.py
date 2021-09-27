@@ -27,7 +27,7 @@ class ActionDesignator: # (Designator):
     def reference(self):
         resolver = ActionDesignator.resolver[self.description.resolver]
         solution = resolver(self)
-        return self
+        return solution
 
 
     def perform(self):
