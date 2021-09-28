@@ -1,3 +1,5 @@
+import rospy
+
 from pycram.robot_description import InitializedRobotDescription as robot_description
 import available_process_modules
 #import motion_designator_grounding  # Needs to be imported to load Process Modules and designator solutions
