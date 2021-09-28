@@ -413,6 +413,15 @@ class Object:
         self.world.restore_state(*s)
         return contact_points
 
+    def add_link_coordinate_system(self, link_name: str):
+        p.addUserDebugLine([0, 0, 0], [0.2, 0, 0], [1, 0, 0], lineWidth=3, parentObjectUniqueId=self.id,
+                            parentLinkIndex=self.get_link_id(link_name))
+        p.addUserDebugLine([0, 0, 0], [0, 0.2, 0], [0, 1, 0], lineWidth=3, parentObjectUniqueId=self.id,
+                            parentLinkIndex=self.get_link_id(link_name))
+        p.addUserDebugLine([0, 0, 0], [0, 0, 0.2], [0, 0, 1], lineWidth=3, parentObjectUniqueId=self.id,
+                            parentLinkIndex=self.get_link_id(link_name))
+
+
 
 def filter_contact_points(contact_points, exclude_ids):
     return list(filter(lambda cp: cp[2] not in exclude_ids, contact_points))

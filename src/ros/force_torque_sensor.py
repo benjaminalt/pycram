@@ -4,6 +4,7 @@ import roslibpy
 import pybullet as pb
 
 from ros.ros_topic_publisher import ROSTopicPublisher
+from ros.rosbridge import ros_client
 
 
 class ForceTorqueSensor(ROSTopicPublisher):
@@ -24,7 +25,7 @@ class ForceTorqueSensor(ROSTopicPublisher):
             raise RuntimeError(f"Could not register ForceTorqueSensor: Joint {joint_name} does not exist")
         pb.enableJointForceTorqueSensor(self.world.robot.id, self.fts_joint_idx, enableSensor=1)
 
-        self.fts_pub = roslibpy.Topic(self.ros_client, fts_topic, "geometry_msgs/WrenchStamped")
+        self.fts_pub = roslibpy.Topic(ros_client, fts_topic, "geometry_msgs/WrenchStamped")
         self.interval = interval
 
     def _publish(self):

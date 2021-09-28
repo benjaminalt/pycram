@@ -1,4 +1,3 @@
-import json
 from typing import List
 
 from neem_interface_python.rosprolog_client import atom

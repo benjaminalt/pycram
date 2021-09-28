@@ -1,6 +1,6 @@
 from enum import Enum, auto
 
-from pycram.designator import ObjectDesignator
+from pycram.object_designator import ObjectDesignator
 
 
 OBJECT_HELD_LEFT = None
