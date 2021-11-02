@@ -3,7 +3,7 @@ import logging
 import roslibpy
 import pybullet as pb
 
-from ros.rosbridge import ros_client
+from pycram_ros.rosbridge import ros_client
 
 DIGITAL_TWIN_ENABLED = True
 

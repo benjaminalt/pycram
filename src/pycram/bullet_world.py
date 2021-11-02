@@ -15,7 +15,7 @@ import pathlib
 import logging
 import rospkg
 
-from ros.rosbridge import ros_client
+from pycram_ros.rosbridge import ros_client
 from .event import Event
 #from .helper import transform
 
