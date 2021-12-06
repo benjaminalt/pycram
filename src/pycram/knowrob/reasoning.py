@@ -26,9 +26,9 @@ def object_pose(object_iri: str, reference_cs: str = "world", timestamp=None) ->
     :param reference_cs: The coordinate system relative to which the pose should be defined
     """
     if timestamp is None:
-        res = knowrob.once(f"mem_tf_get({atom(object_iri)}, {atom(reference_cs)}, Pos, Ori)")
+        res = knowrob.once(f"mem_tf_get({atom(object_iri)}, [{atom(reference_cs)}, Pos, Ori])")
     else:
-        res = knowrob.once(f"mem_tf_get({atom(object_iri)}, {atom(reference_cs)}, Pos, Ori, {timestamp})")
+        res = knowrob.once(f"mem_tf_get({atom(object_iri)}, [{atom(reference_cs)}, Pos, Ori], {timestamp})")
     pos = res["Pos"]
     ori = res["Ori"]
     return pos + ori

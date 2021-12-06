@@ -14,8 +14,8 @@ class TestObjectDesignatorGrounding(TestCase):
                 is_individual(a1), instance_of(a1, a),
                 is_individual(a2), instance_of(a2, a)]),
             tf_logger_enable,
-            mem_tf_set(a1, world, [1.0, 1.0, 1.0], [0.0, 0.0, 0.0, 1.0], 4.0),
-            mem_tf_set(a2, world, [2.0, 2.0, 2.0], [0.0, 0.0, 0.0, 1.0], 4.0)""")
+            mem_tf_set(a1, [world, [1.0, 1.0, 1.0], [0.0, 0.0, 0.0, 1.0]], 4.0),
+            mem_tf_set(a2, [world, [2.0, 2.0, 2.0], [0.0, 0.0, 0.0, 1.0]], 4.0)""")
 
     def tearDown(self) -> None:
         knowrob.clear_beliefstate()
