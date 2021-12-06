@@ -7,6 +7,7 @@ class MotionDesignator(Designator):
 	"""
 	Implementation of motion designators.
 	"""
+	resolvers = {}
 
 	def __init__(self, description, parent=None):
 		super().__init__(description, parent)

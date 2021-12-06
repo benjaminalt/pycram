@@ -17,26 +17,38 @@ __all__ = ["ActionDesignator",
 
 from typing import List
 from .task import with_tree
-from .designator import Designator
+from .designator import Designator, DesignatorError
 
-class ActionDesignator: # (Designator):
-    resolver = {}
-    def __init__(self, description):
+
+class ActionDesignator(Designator):
+    resolvers = {}
+
+    def __init__(self, description, parent=None):
+        super().__init__(description, parent)
         self.description = description
 
-    def reference(self):
-        resolver = ActionDesignator.resolver[self.description.resolver]
-        solution = resolver(self)
-        return solution
+    def next_solution(self):
+        try:
+            self.reference()
+        except DesignatorError:
+            pass
 
+        if self._solutions.has(self._index + 1):
+            desig = ActionDesignator(self.description, self)
+            desig._solutions = self._solutions
+            desig._index = self._index + 1
+            return desig
+
+        return None
 
     def perform(self):
-        #desc = self.description.ground()
+        # desc = self.description.ground()
         desc = self.reference()
         return desc.function()
 
     def __call__(self, *args, **kwargs):
         return self.perform()
+
 
 class ActionDesignatorDescription:
     function = None
@@ -44,10 +56,15 @@ class ActionDesignatorDescription:
     def ground(self):
         return self
 
+    def __call__(self, *args, **kwargs):
+        return self.function()
+
+
 class MoveTorsoActionDescription(ActionDesignatorDescription):
     def __init__(self, position, resolver="grounding"):
         self.position = position
         self.resolver = resolver
+
 
 class SetGripperActionDescription(ActionDesignatorDescription):
     def __init__(self, gripper, opening, resolver="grounding"):
@@ -55,11 +72,13 @@ class SetGripperActionDescription(ActionDesignatorDescription):
         self.opening = opening
         self.resolver = resolver
 
+
 class ReleaseActionDescription(ActionDesignatorDescription):
     def __init__(self, gripper, object_designator=None, resolver="grounding"):
         self.gripper = gripper
         self.object_designator = object_designator
         self.resolver = resolver
+
 
 class GripActionDescription(ActionDesignatorDescription):
     def __init__(self, gripper, object_designator=None, effort=None, resolver="grounding"):
@@ -69,6 +88,7 @@ class GripActionDescription(ActionDesignatorDescription):
         self.grasped_object = None
         self.resolver = resolver
 
+
 class MoveArmsIntoConfigurationDescription(ActionDesignatorDescription):
     def __init__(self, left_configuration=None, right_configuration=None, resolver="grounding"):
         self.left_configuration = left_configuration
@@ -77,16 +97,19 @@ class MoveArmsIntoConfigurationDescription(ActionDesignatorDescription):
         self.right_joint_states = {}
         self.resolver = resolver
 
+
 class MoveArmsInSequenceDescription(ActionDesignatorDescription):
-    def __init__(self, left_trajectory : List = [], right_trajectory : List = [], resolver="grounding"):
+    def __init__(self, left_trajectory: List = [], right_trajectory: List = [], resolver="grounding"):
         self.left_trajectory = left_trajectory
         self.right_trajectory = right_trajectory
         self.resolver = resolver
+
 
 class ParkArmsDescription(ActionDesignatorDescription):
     def __init__(self, arm, resolver="grounding"):
         self.arm = arm
         self.resolver = resolver
+
 
 class PickUpDescription(ActionDesignatorDescription):
     def __init__(self, object_designator, arm=None, grasp=None, resolver="grounding"):
@@ -105,6 +128,7 @@ class PickUpDescription(ActionDesignatorDescription):
         # self.left_lift_poses = []
         # self.right_lift_poses = []
 
+
 class PlaceDescription(ActionDesignatorDescription):
     def __init__(self, object_designator, target_location, arm=None, resolver="grounding"):
         self.object_designator = object_designator
@@ -120,8 +144,10 @@ class PlaceDescription(ActionDesignatorDescription):
         # self.left_retract_poses = []
         # self.right_retract_poses = []
 
+
 class NavigateDescription(ActionDesignatorDescription):
-    def __init__(self, object_designator=None, target_location=None, target_position=None, target_orientation=None, resolver="grounding"):
+    def __init__(self, object_designator=None, target_location=None, target_position=None, target_orientation=None,
+                 resolver="grounding"):
         if object_designator and target_location:
             print("Warning: When providing both an object and a target location to navigate, only the object designator"
                   "will be considered.")
@@ -131,6 +157,7 @@ class NavigateDescription(ActionDesignatorDescription):
         self.target_orientation = target_orientation
         self.resolver = resolver
 
+
 class TransportObjectDescription(ActionDesignatorDescription):
     def __init__(self, object_designator, arm, target_location, resolver="grounding"):
         self.object_designator = object_designator
@@ -138,15 +165,18 @@ class TransportObjectDescription(ActionDesignatorDescription):
         self.target_location = target_location
         self.resolver = resolver
 
+
 class LookAtActionDescription(ActionDesignatorDescription):
     def __init__(self, target, resolver="grounding"):
         self.target = target
         self.resolver = resolver
 
+
 class DetectActionDescription(ActionDesignatorDescription):
     def __init__(self, object_designator, resolver="grounding"):
         self.object_designator = object_designator
         self.resolver = resolver
+
 
 class OpenActionDescription(ActionDesignatorDescription):
     def __init__(self, object_designator, arm, distance=None, resolver="grounding"):
@@ -154,6 +184,7 @@ class OpenActionDescription(ActionDesignatorDescription):
         self.arm = arm
         self.distance = distance
         self.resolver = resolver
+
 
 class CloseActionDescription(ActionDesignatorDescription):
     def __init__(self, object_designator, arm, resolver="grounding"):

@@ -61,9 +61,11 @@ class ProcessModule:
 		(self._running == False).wait_for()
 		self._running.set_value(True)
 		designator = self._designators[0]
-		ret = self._execute(designator)
-		self._designators.remove(designator)
-		self._running.set_value(False)
+		try:
+			ret = self._execute(designator)
+		finally:	# Remove designator from the running set, even if an exception was thrown
+			self._designators.remove(designator)
+			self._running.set_value(False)
 		return ret
 
 class real_robot():

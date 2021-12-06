@@ -24,6 +24,14 @@ class DesignatorError(Exception):
         Exception.__init__(self, *args, **kwargs)
 
 
+class DesignatorSimulationError(DesignatorError):
+    pass
+
+
+class DesignatorExecutionError(DesignatorError):
+    pass
+
+
 class ResolutionError(Exception):
     def __init__(self, missing_properties, wrong_type, current_type, designator):
         self.error = f"\nSome requiered properties where missing or had the wrong type when grounding the Designator: {designator}.\n"
@@ -357,9 +365,9 @@ class DesignatorDescription():
         wrong_type = {}
         current_type = {}
         for k in attributes.keys():
-            if attributes[k] == None and not attributes[k] in exclude:
+            if attributes[k] == None and attributes[k] not in exclude:
                 missing.append(k)
-            elif type(attributes[k]) != right_types[k] and not attributes[k] in exclude:
+            elif type(attributes[k]) != right_types[k] and attributes[k] not in exclude:
                 wrong_type[k] = right_types[k]
                 current_type[k] = type(attributes[k])
         if missing != [] or wrong_type != {}:
