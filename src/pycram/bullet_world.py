@@ -421,7 +421,21 @@ class Object:
         p.addUserDebugLine([0, 0, 0], [0, 0, 0.2], [0, 0, 1], lineWidth=3, parentObjectUniqueId=self.id,
                             parentLinkIndex=self.get_link_id(link_name))
 
+    def ik(self, pose: List[float], link_name="ee_link") -> List[float]:
+        link_id = self.get_link_id(link_name)
+        joint_state = p.calculateInverseKinematics(self.id, link_id, pose[:3], pose[3:], maxNumIterations=500)
+        return joint_state
 
+    def fk(self, joint_cnf: List[float], link_name="ee_link") -> List[float]:
+        """
+        Return the Cartesian pose of the URDF link frame given by link_name in world coordinates.
+        :return: [x,y,z,qx,qy,qz,qw]
+        """
+        link_id = self.get_link_id(link_name)
+        res = p.getLinkState(self.id, link_id, computeForwardKinematics=True)
+        world_link_frame_pos = res[4]
+        world_link_frame_ori = res[5]
+        return world_link_frame_pos + world_link_frame_ori
 
 def filter_contact_points(contact_points, exclude_ids):
     return list(filter(lambda cp: cp[2] not in exclude_ids, contact_points))
