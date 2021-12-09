@@ -1,5 +1,17 @@
+from typing import List
+
+from pycram.bullet_world import BulletWorld
 from pycram.knowrob.reasoning import object_type, instances_of, object_pose
 from pycram.object_designator import LocatedObjectDesignatorDescription, ObjectDesignator
+
+
+def _update_object_pose_in_bullet_world(object_name: str, object_pose: List):
+    if BulletWorld.current_bullet_world is None:
+        return
+    bullet_object_names = [obj.name for obj in BulletWorld.current_bullet_world.objects]
+    if object_name in bullet_object_names:
+        obj = BulletWorld.current_bullet_world.get_objects_by_name(object_name)[0]
+        obj.set_position_and_orientation(object_pose[:3], object_pose[3:7])
 
 
 def ground_located_object(description: LocatedObjectDesignatorDescription):
