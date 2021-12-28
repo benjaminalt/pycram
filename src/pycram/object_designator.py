@@ -47,10 +47,12 @@ class LocatedObjectDesignatorDescription(ObjectDesignatorDescription):
     pose: List[float]
     reference_frame: str
     timestamp: float
+    aabb: List[List[float]]
 
     def __init__(self, type_: str = None, name: str = None, pose: List[float] = None, reference_frame: str = "world",
-                 timestamp: float = None, resolver="grounding"):
+                 timestamp: float = None, aabb: List[List[float]] = None, resolver="grounding"):
         super().__init__(type_, name, resolver)
         self.pose = pose
         self.reference_frame = reference_frame
         self.timestamp = timestamp
+        self.aabb = aabb

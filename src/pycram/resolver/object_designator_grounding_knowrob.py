@@ -22,17 +22,23 @@ def ground_located_object(description: LocatedObjectDesignatorDescription):
         raise RuntimeError("Could not ground LocatedObjectDesignatorDescription: Either type or name must be given")
     if not description.type:
         description.type = object_type(description.name)
-    elif not description.name:
+    if not description.name:
         # Retrieve all objects of the given type, fetch their poses and yield the grounded description
+        print(f"Locating objects of type {description.type}")
         object_names = instances_of(description.type)
         for object_name in object_names:
+            print(f"Locating object pose for {object_name}")
             description.name = object_name
             _ground_pose(description)
+            if BulletWorld.current_bullet_world is not None:
+                _update_object_pose_in_bullet_world(description.name, description.pose)
             yield description.__dict__
-    else:
+        raise StopIteration()
+    elif not description.pose:
         # Fetch the object pose and yield the grounded description
         _ground_pose(description)
-        return description.__dict__
+    _update_object_pose_in_bullet_world(description.name, description.pose)
+    yield description.__dict__
 
 
 def call_ground(desig):

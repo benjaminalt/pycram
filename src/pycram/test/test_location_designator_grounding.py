@@ -7,7 +7,7 @@ from pycram.location_designator import ObjectRelativeLocationDesignatorDescripti
     LocationDesignatorDescription
 from pycram.object_designator import LocatedObjectDesignatorDescription, ObjectDesignator
 from pycram.resolver import location_designator_grounding     # do not remove
-from pycram.resolver import object_designator_grounding       # do not remove
+from pycram.resolver import object_designator_grounding_knowrob       # do not remove
 
 
 class TestLocationDesignatorGrounding(TestCase):
