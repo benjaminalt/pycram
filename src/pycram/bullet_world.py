@@ -258,7 +258,6 @@ class Object:
         obj.cids[self] = cid
         self.world.attachment_event(self, [self, obj])
 
-
     def detach(self, object):
         """
         This method detaches an other object from this object. This is done by
@@ -352,6 +351,10 @@ class Object:
 
     def set_pose(self, position):
         self.set_position(position)
+
+    def get_aabb(self) -> List[List[float]]:
+        pos_min, pos_max = p.getAABB(self.id, physicsClientId=self.world.client_id)
+        return [list(pos_min) + [0, 0, 0, 1], list(pos_max) + [0, 0, 0, 1]]
 
     def _joint_or_link_name_to_id(self, type):
         nJoints = p.getNumJoints(self.id, self.world.client_id)
