@@ -439,6 +439,15 @@ class Object:
         world_link_frame_ori = res[5]
         return world_link_frame_pos + world_link_frame_ori
 
+    def disable_all_collisions(self):
+        for link_id in self.links.values():
+            p.setCollisionFilterGroupMask(self.id, link_id, collisionFilterGroup=0, collisionFilterMask=0)
+
+    def enable_all_collisions(self):
+        for link_id in self.links.values():
+            p.setCollisionFilterGroupMask(self.id, link_id, collisionFilterGroup=0, collisionFilterMask=1)
+
+
 def filter_contact_points(contact_points, exclude_ids):
     return list(filter(lambda cp: cp[2] not in exclude_ids, contact_points))
 
