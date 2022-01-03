@@ -158,8 +158,6 @@ class BulletWorld:
         self.vis_axis = obj
 
 
-
-
 current_bullet_world = BulletWorld.current_bullet_world
 
 
@@ -220,8 +218,13 @@ class Object:
         self.links = self._joint_or_link_name_to_id("link")
         self.attachments = {}
         self.cids = {}
+        # Set collision filter group mask
+        currently_known_object_types = list(set([obj.type for obj in self.world.objects]))
+        if self.type in currently_known_object_types:
+            self.collision_filter_group = next(filter(lambda other_obj: other_obj.type == self.type, self.world.objects)).collision_filter_group
+        else:
+            self.collision_filter_group = 2 ** len(currently_known_object_types)
         self.world.objects.append(self)
-        self.enable_all_collisions()
 
     def remove(self):
         """
@@ -442,13 +445,32 @@ class Object:
         world_link_frame_ori = res[5]
         return world_link_frame_pos + world_link_frame_ori
 
-    def disable_all_collisions(self):
-        for link_id in self.links.values():
-            p.setCollisionFilterGroupMask(self.id, link_id, collisionFilterGroup=0, collisionFilterMask=0)
+    def enable_collisions(self, other_object_types: List[str] = None, enable: bool = True):
+        """
+        Enable or disable collision checking
+        :param other_object_types: If given, enable/disable collisions with objects of these types. Otherwise with all objects
+        :param enable: Whether to enable or disable collisions
+        """
+        all_object_types = list(set([obj.type for obj in self.world.objects]))
+        object_type_to_filter_group = {obj_type: self.world.get_objects_by_type(obj_type)[0].collision_filter_group for obj_type in all_object_types}
+        if enable:
+            if other_object_types is None:
+                collision_filter_mask = int('1' * len(all_object_types), 2) # Enable with all others
+            else:
+                collision_filter_mask = 0   # Disable by default, enable with those provided
+                for other_object_type in other_object_types:
+                    collision_filter_mask |= object_type_to_filter_group[other_object_type]
+        else:
+            if other_object_types is None:
+                collision_filter_mask = 0   # Disable with all others
+            else:
+                collision_filter_mask = int('1' * len(all_object_types), 2) # Enable by default, disable with those provided
+                for other_object_type in other_object_types:
+                    collision_filter_mask &= ~object_type_to_filter_group[other_object_type]
 
-    def enable_all_collisions(self):
+        p.setCollisionFilterGroupMask(self.id, -1, collisionFilterGroup=self.collision_filter_group, collisionFilterMask=collision_filter_mask)
         for link_id in self.links.values():
-            p.setCollisionFilterGroupMask(self.id, link_id, collisionFilterGroup=0, collisionFilterMask=1)
+            p.setCollisionFilterGroupMask(self.id, link_id, collisionFilterGroup=self.collision_filter_group, collisionFilterMask=collision_filter_mask)
 
 
 def filter_contact_points(contact_points, exclude_ids):
@@ -509,9 +531,8 @@ def _load_object(name, path, position, orientation, world, color, ignoreCachedFi
         return obj, path
     except p.error as e:
         print(e)
-        logging.error("The File could not be loaded. Plese note that the path has to be either a URDF, stl or obj file or the name of an URDF string on the parameter server.")
+        raise RuntimeError("The File could not be loaded. Plese note that the path has to be either a URDF, stl or obj file or the name of an URDF string on the parameter server.")
         #print(f"{bcolors.BOLD}{bcolors.WARNING}The path has to be either a path to a URDf file, stl file, obj file or the name of a URDF on the parameter server.{bcolors.ENDC}")
-
 
 def _is_cached(path, name, cach_dir):
     """
