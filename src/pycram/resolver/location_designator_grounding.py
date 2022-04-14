@@ -1,7 +1,7 @@
 from pycram.designator import DesignatorError
 from pycram.helper import transform
 from pycram.location_designator import ObjectRelativeLocationDesignatorDescription, LocationDesignator, \
-    LocationDesignatorDescription
+    LocationDesignatorDescription, RelativeMotionDesignatorDescription
 
 
 def ground_object_relative_location(description: ObjectRelativeLocationDesignatorDescription):
@@ -22,9 +22,16 @@ def ground_location(description: LocationDesignatorDescription):
     yield description.__dict__
 
 
+def ground_relative_motion(description: RelativeMotionDesignatorDescription):
+    if description.relative_motion is None:
+        raise DesignatorError("Could not ground RelativeMotionDesignatorDescription: Relative motion transformation must be given")
+    yield description.__dict__
+
+
 def call_ground(desig):
     type_to_function = {ObjectRelativeLocationDesignatorDescription: ground_object_relative_location,
-                        LocationDesignatorDescription: ground_location}
+                        LocationDesignatorDescription: ground_location,
+                        RelativeMotionDesignatorDescription: ground_relative_motion}
     ground_function = type_to_function[type(desig._description)]
     return ground_function(desig._description)
 

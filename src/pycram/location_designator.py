@@ -53,3 +53,11 @@ class ObjectRelativeLocationDesignatorDescription(LocationDesignatorDescription)
         super().__init__(pose=None, resolver=resolver)
         self.relative_pose = relative_pose
         self.reference_object = reference_object
+
+
+class RelativeMotionDesignatorDescription(LocationDesignatorDescription):
+    relative_motion = List[float]
+
+    def __init__(self, relative_motion=None, resolver="grounding"):
+        super().__init__(resolver)
+        self.relative_motion = relative_motion
