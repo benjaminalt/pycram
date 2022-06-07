@@ -365,9 +365,9 @@ class DesignatorDescription():
         wrong_type = {}
         current_type = {}
         for k in attributes.keys():
-            if attributes[k] == None and attributes[k] not in exclude:
+            if attributes[k] == None and k not in exclude:
                 missing.append(k)
-            elif type(attributes[k]) != right_types[k] and attributes[k] not in exclude:
+            elif type(attributes[k]) != right_types[k] and k not in exclude:
                 wrong_type[k] = right_types[k]
                 current_type[k] = type(attributes[k])
         if missing != [] or wrong_type != {}:
