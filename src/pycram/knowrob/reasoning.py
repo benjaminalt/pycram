@@ -1,14 +1,11 @@
-from typing import List, Union
+from typing import List
 
 import numpy as np
+from neem_interface_python.rosprolog_client import atom
 from pytransform3d.rotations import quaternion_wxyz_from_xyzw, quaternion_xyzw_from_wxyz
 from pytransform3d.transformations import transform_from_pq, pq_from_transform
 
-from neem_interface_python.rosprolog_client import atom
-
 from pycram.knowrob import knowrob
-from pycram.knowrob.utils import knowrob_string_to_pose
-from pycram.object_designator import ObjectDesignator
 
 
 def object_type(object_iri: str) -> str:
@@ -16,6 +13,15 @@ def object_type(object_iri: str) -> str:
     :param object_iri: The name (identifier) of the object individual in the KnowRob knowledge base
     """
     return knowrob.once(f"kb_call(instance_of({atom(object_iri)}, Class))")["Class"]
+
+
+def instance_of(individual: str, cls: str) -> bool:
+    """
+    Returns true if an individual is an instance of a class
+    :param individual: Individual IRI
+    :param cls: Class IRI
+    """
+    return type(knowrob.once(f"kb_call(instance_of({atom(individual)}, {atom(cls)}))")) == dict
 
 
 def instances_of(type_: str) -> List[str]:
