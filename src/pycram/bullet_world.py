@@ -51,7 +51,7 @@ class BulletWorld:
         time.sleep(1) # 0.1
         self.last_bullet_world = BulletWorld.current_bullet_world
         BulletWorld.current_bullet_world = self
-        self.vis_axis = None
+        self.vis_axes = []
 
     def get_objects_by_name(self, name):
         return list(filter(lambda obj: obj.name == name, self.objects))
@@ -125,17 +125,18 @@ class BulletWorld:
                 o.set_joint_state(joint, obj.get_joint_state(joint))
         return world
 
-    def add_vis_axis(self, position_and_orientation, length=0.2):
+    def add_vis_axis(self, position_and_orientation, length=0.2, delete_existing=True):
         """
         Creates a Visual object which represents the coordinate frame at the given
-        position and orientation. There can only be one vis axis at a time. If this
-        method is called again the previous visualization will be deleted.
+        position and orientation. If delete_existing=True, there can only be one vis axis at a time,
+        and the previous visualization will be deleted.
         :param position_and_orientation: The position as vector of x,y,z and the
         orientation as a quanternion
         :param length: Optional parameter to configure the length of the axes
         """
-        if self.vis_axis:
-            p.removeBody(self.vis_axis)
+        if len(self.vis_axes) > 0 and delete_existing:
+            for ax in self.vis_axes:
+                p.removeBody(ax)
 
         position = position_and_orientation[0]
         orientation = position_and_orientation[1]
@@ -155,7 +156,7 @@ class BulletWorld:
             linkJointTypes=[p.JOINT_FIXED, p.JOINT_FIXED, p.JOINT_FIXED], linkJointAxis=[[1,0,0], [0,1,0], [0,0,1]],
             linkCollisionShapeIndices=[-1, -1, -1])
 
-        self.vis_axis = obj
+        self.vis_axes.append(obj)
 
 
 current_bullet_world = BulletWorld.current_bullet_world
