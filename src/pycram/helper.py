@@ -15,6 +15,8 @@ from pytransform3d.transformations import transform_from_pq, transform_from, pq_
 
 from macropy.core.quotes import macros, ast_literal, q
 import pybullet as p
+from scipy.spatial.transform import Rotation
+
 from .robot_description import InitializedRobotDescription as robot_description
 
 
@@ -59,6 +61,7 @@ def _transform_to_torso(pose_and_rotation, robot):
     map_T_target = pose_and_rotation
     torso_T_target = p.multiplyTransforms(torso_T_map[0], torso_T_map[1], map_T_target[0], map_T_target[1])
     return torso_T_target
+
 
 def transform(pose: List[float],
               transformation: List[float], local_coords=False):  # TODO: if pose is a list of position and orientation calculate new pose w/ orientation too
@@ -139,3 +142,30 @@ class GeneratorList:
             return True
         except StopIteration:
             return False
+
+
+def affine_from_pycram_pose(pycram_pose: List[float]) -> np.ndarray:
+    pq = np.concatenate((pycram_pose[:3], quaternion_wxyz_from_xyzw(pycram_pose[3:])))
+    return transform_from_pq(pq)
+
+
+def pycram_pose_from_affine(affine: np.ndarray) -> List[float]:
+    pq = pq_from_transform(affine)
+    return np.concatenate((pq[:3], quaternion_xyzw_from_wxyz(pq[3:]))).tolist()
+
+
+def xyz_euler_from_pycram_pose(pycram_pose: List[float]) -> List[float]:
+    ori_euler = Rotation.from_quat(pycram_pose[3:]).as_euler("xyz", degrees=False).tolist()
+    return pycram_pose[:3] + ori_euler
+
+
+def pycram_pose_from_xyz_euler(xyz_euler: List[float], degrees=False) -> List[float]:
+    ori_quat = Rotation.from_euler("xyz", xyz_euler[3:], degrees=degrees).as_quat().tolist()
+    return xyz_euler[:3] + ori_quat
+
+
+def pycram_pose_to_knowrob_string(pose: List[float], reference_frame="world") -> str:
+    """
+    Convert a pq list [x,y,z,qx,qy,qz,qw] to a KnowRob pose "[reference_cs, [x,y,z],[qx,qy,qz,qw]]"
+    """
+    return f"['{reference_frame}', [{pose[0]},{pose[1]},{pose[2]}], [{pose[3]},{pose[4]},{pose[5]},{pose[6]}]]"
