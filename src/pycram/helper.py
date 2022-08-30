@@ -7,7 +7,7 @@ Classes:
 GeneratorList -- implementation of generator list wrappers.
 """
 from inspect import isgeneratorfunction
-from typing import List
+from typing import List, Union
 
 import numpy as np
 from pytransform3d.rotations import quaternion_wxyz_from_xyzw, quaternion_xyzw_from_wxyz
@@ -169,3 +169,10 @@ def pycram_pose_to_knowrob_string(pose: List[float], reference_frame="world") ->
     Convert a pq list [x,y,z,qx,qy,qz,qw] to a KnowRob pose "[reference_cs, [x,y,z],[qx,qy,qz,qw]]"
     """
     return f"['{reference_frame}', [{pose[0]},{pose[1]},{pose[2]}], [{pose[3]},{pose[4]},{pose[5]},{pose[6]}]]"
+
+
+def affine_from_translation(trans: Union[np.ndarray, List[float]]):
+    assert len(trans) == 3
+    if type(trans) == np.ndarray:
+        trans = trans.tolist()
+    return affine_from_pycram_pose(trans + [0, 0, 0, 1])

@@ -70,5 +70,10 @@ def feature_pose(object_iri, feature_name: str) -> List[float]:
     obj_T_feature = transform_from_pq(feature_frame_relative_pq)
     world_T_feature = world_T_obj @ obj_T_feature
     feature_frame_world_pq = pq_from_transform(world_T_feature)
-    feature_frame_world = np.concatenate((feature_frame_world_pq[:3], quaternion_xyzw_from_wxyz(feature_frame_world_pq[3:])))
+    feature_frame_world = np.concatenate(
+        (feature_frame_world_pq[:3], quaternion_xyzw_from_wxyz(feature_frame_world_pq[3:])))
     return feature_frame_world.tolist()
+
+
+def get_features(object_iri: str) -> List[str]:
+    return [sol["Feature"] for sol in knowrob.all_solutions(f"kb_call(object_feature({atom(object_iri)}, Feature))")]
