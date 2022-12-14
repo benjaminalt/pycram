@@ -39,36 +39,40 @@ def _ground_pose(desc: LocatedObjectDesignatorDescription):
 
 
 def ground_located_object(description: LocatedObjectDesignatorDescription):
-    if not description.type and not description.name:
-        raise RuntimeError("Could not ground LocatedObjectDesignatorDescription: Either type or name must be given")
-    if not description.type:
-        description.type = object_type(description.name)
-    if not description.name:
-        # Retrieve all objects of the given type, fetch their poses and yield the grounded description
-        print(f"Locating objects of type {description.type}")
-        object_names = instances_of(description.type)
-        for object_name in object_names:
-            print(f"Locating object pose for {object_name}")
-            description.name = object_name
+    try:
+        if not description.type and not description.name:
+            raise RuntimeError("Could not ground LocatedObjectDesignatorDescription: Either type or name must be given")
+        if not description.type:
+            description.type = object_type(description.name)
+        if not description.name:
+            # Retrieve all objects of the given type, fetch their poses and yield the grounded description
+            print(f"Locating objects of type {description.type}")
+            object_names = instances_of(description.type)
+            for object_name in object_names:
+                print(f"Locating object pose for {object_name}")
+                description.name = object_name
+                _ground_pose(description)
+                if description.aabb is None:
+                    _ground_aabb(description)
+                if description.obb is None:
+                    _ground_obb(description)
+                if BulletWorld.current_bullet_world is not None:
+                    _update_object_pose_in_bullet_world(description.name, description.pose)
+                yield description.__dict__
+            raise StopIteration()
+        elif not description.pose:
+            # Fetch the object pose and yield the grounded description
             _ground_pose(description)
             if description.aabb is None:
                 _ground_aabb(description)
             if description.obb is None:
                 _ground_obb(description)
-            if BulletWorld.current_bullet_world is not None:
-                _update_object_pose_in_bullet_world(description.name, description.pose)
-            yield description.__dict__
-        raise StopIteration()
-    elif not description.pose:
-        # Fetch the object pose and yield the grounded description
-        _ground_pose(description)
-        if description.aabb is None:
-            _ground_aabb(description)
-        if description.obb is None:
-            _ground_obb(description)
-    if BulletWorld.current_bullet_world is not None:
-        _update_object_pose_in_bullet_world(description.name, description.pose)
-    yield description.__dict__
+        if BulletWorld.current_bullet_world is not None:
+            _update_object_pose_in_bullet_world(description.name, description.pose)
+        yield description.__dict__
+    except IndexError as e:
+        print(f"Error grounding object {description.name} of type {description.type}")
+        raise e
 
 
 def call_ground(desig):
