@@ -12,7 +12,12 @@ def object_type(object_iri: str) -> str:
     """
     :param object_iri: The name (identifier) of the object individual in the KnowRob knowledge base
     """
-    return knowrob.once(f"kb_call(instance_of({atom(object_iri)}, Class))")["Class"]
+    candidates = knowrob.once(f"kb_call([instance_of({atom(object_iri)}, Class), subclass_of(Class, dul:'PhysicalObject')])")
+    # Things can be instances of more than one thing
+    if type(candidates) == dict:
+        return candidates["Class"]
+    else:
+        return candidates[0]["Class"]
 
 
 def instance_of(individual: str, cls: str) -> bool:
